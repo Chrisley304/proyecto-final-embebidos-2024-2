@@ -4,6 +4,7 @@ import schedule
 import time
 import threading
 from utils import telegram_utils, notion_utils
+from hardware import fingerprint_utils
 
 
 def something_happens():
@@ -29,8 +30,12 @@ def something_happens():
 
 def testing():
     while True:
-        something_happens()
-        time.sleep(2)
+        if fingerprint_utils.get_fingerprint():
+            print("Detected #", fingerprint_utils.finger.finger_id, "with confidence", fingerprint_utils.finger.confidence)
+            something_happens()
+        else:
+            fingerprint_utils.enroll_finger()
+        # time.sleep(2)
 
 
 if __name__ == '__main__':
