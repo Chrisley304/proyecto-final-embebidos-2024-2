@@ -3,7 +3,7 @@ import json
 import schedule
 import time
 import threading
-from utils import telegram_utils, notion_utils
+from utils import telegram_utils, notion_utils, lcd_utils
 from hardware import fingerprint_utils
 
 
@@ -17,21 +17,13 @@ def something_happens():
     notion_utils.add_log_entry_to_notion()
 
 
-# def bot_polling_thread():
-#     while True:
-#         try:
-#             telegram_bot.polling()
-#         except Exception as e:
-#             print(f"Error en el polling del bot: {e}")
-#             time.sleep(5)
-
-# Función para ejecutar el programador de tareas en un hilo separado
-
-
-def testing():
+def hardware_init():
+    fingerprint_utils.init()
+    # TODO: Verificar que funcione bien lo del enrolamiento y buscar huella por el tema del id(numero)
     while True:
         if fingerprint_utils.get_fingerprint():
-            print("Detected #", fingerprint_utils.finger.finger_id, "with confidence", fingerprint_utils.finger.confidence)
+            print("Detected #", fingerprint_utils.finger.finger_id,
+                  "with confidence", fingerprint_utils.finger.confidence)
             something_happens()
         else:
             fingerprint_utils.enroll_finger()
@@ -39,14 +31,20 @@ def testing():
 
 
 if __name__ == '__main__':
-    print("Starting bot...")
-    telegram_bot_thread = threading.Thread(target=telegram_utils.init)
-    test_thread = threading.Thread(target=testing)
+    try:
+        print("Starting bot...")
+        telegram_bot_thread = threading.Thread(target=telegram_utils.init)
+        hardware_thread = threading.Thread(target=hardware_init)
+        lcd_utils.lcd_init()
 
-    # Start the threads before joining them
-    telegram_bot_thread.start()
-    test_thread.start()
+        # Start the threads before joining them
+        telegram_bot_thread.start()
+        hardware_thread.start()
 
-    # Esperar a que ambos hilos terminen
-    telegram_bot_thread.join()
-    test_thread.join()
+        # Esperar a que ambos hilos terminen
+        telegram_bot_thread.join()
+        hardware_thread.join()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        lcd_utils.lcd_byte(0x01, lcd_utils.LCD_CMD)
