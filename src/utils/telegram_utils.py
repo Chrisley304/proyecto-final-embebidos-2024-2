@@ -11,10 +11,10 @@ telegram_bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # Carga de usuarios suscritos desde archivo JSON
 try:
-    with open('subscribed_users.json', 'r') as file:
-        subscribed_users = json.load(file)
+    with open('safe_users.json', 'r') as file:
+        safe_users = json.load(file)
 except FileNotFoundError:
-    subscribed_users = []
+    safe_users = {}
 
 
 def start(message):
@@ -24,29 +24,95 @@ def start(message):
     Params:
         message: Objeto de mensaje de Telegram.
     """
-    telegram_bot.reply_to(
-        message, "¡Hola! Soy tu bot de seguridad. Usa /subscribe para recibir notificaciones de eventos.")
+    if not usersExists():
+        telegram_bot.reply_to(
+            message, "¡Hola! Soy securitybot, yo te ayudare con la seguridad de tu caja fuerte.\nUsa /registro para registrarte como usuario autorizado y tener acceso a los controles de la caja fuerte.")
+    else:
+        telegram_bot.reply_to(
+            message, "¡Hola! Soy securitybot, quien resguarda la caja fuerte de los Chambeadores!.\nDebes estar autorizado para acceder a los controles de la caja fuerte. Envía /solicitud para enviar una solicitud de autorización para continuar.")
 
 
-def subscribe(message):
+def register_user(message):
     """
-    Función para manejar la suscripción a las notificaciones.
+    Función para manejar el proceso de registro.
 
     Params:
         message: Objeto de mensaje de Telegram.
     """
     user_id = message.chat.id
-    if user_id not in subscribed_users:
-        subscribed_users.append(user_id)
-        with open('subscribed_users.json', 'w') as file:
-            json.dump(subscribed_users, file)
+    if not usersExists() or (user_id in safe_users and safe_users[user_id]['state'] == "awaiting_register"):
         telegram_bot.reply_to(
-            message, "¡Te has suscrito satisfactoriamente! Ahora recibirás notificaciones de eventos.")
+            message, "¡Bienvenido! Por favor envía tu nombre para completar el registro.")
+        
+        # Cambiar el estado del usuario a 'awaiting_name'
+        safe_users[user_id] = {'state': 'awaiting_name'}
+        
+        # Escribir en el archivo JSON
+        with open('safe_users.json', 'w') as file:
+            json.dump(safe_users, file)
+    elif user_id in safe_users:
+        telegram_bot.reply_to(
+            message, "Ya estas registrado.")
     else:
-        telegram_bot.reply_to(message, "¡Ya estás suscrito!")
+        telegram_bot.reply_to(
+            message, "No estas autorizado para registrarte. Solicita autorización enviando /solicitud.")
+
+def handle_name_input(message):
+    """
+    Función para manejar el nombre enviado por el usuario.
+
+    Params:
+        message: Objeto de mensaje de Telegram.
+    """
+    user_id = message.chat.id
+    if user_id in safe_users and safe_users[user_id]['state'] == 'awaiting_name':
+        # Guardar el nombre del usuario
+        user_name = message.text
+        
+        # Pide al usuario una contraseña maestra para emergencias
+        telegram_bot.send_message(user_id, "Ahora por favor envía una contraseña maestra.")
+
+        # Cambiar el estado del usuario a 'awaiting_password'
+        safe_users[user_id]['name'] = user_name
+        safe_users[user_id]['state'] = 'awaiting_password'
+        
+        # Escribir en el archivo JSON
+        with open('safe_users.json', 'w') as file:
+            json.dump(safe_users, file)
+
+    else:
+        telegram_bot.send_message(
+            user_id, "Error: No estás en el proceso de registro o ya has completado el registro.")
+
+def handle_password(message):
+    """
+    Function to handle the master password submission.
+
+    Params:
+        message: Telegram message object.
+    """
+    user_id = message.chat.id
+    if user_id in safe_users and safe_users[user_id]['state'] == 'awaiting_password':
+        # Save the user's master password
+        master_password = message.text
+
+        # Update the user's state to 'registered'
+        safe_users[user_id]['password'] = master_password
+        safe_users[user_id]['state'] = 'registered'
+
+        # Write to the JSON file
+        with open('safe_users.json', 'w') as file:
+            json.dump(safe_users, file)
+
+        telegram_bot.send_message(
+            user_id, "¡Registro exitoso! Ahora eres un usuario autorizado.")
+    else:
+        telegram_bot.send_message(
+            user_id, "Error: No estás en el proceso de registro o ya has completado el registro.")
 
 
-def unsubscribe(message):
+
+def delete_safe_user(message):
     """
     Función para manejar la cancelación de la suscripción a las notificaciones.
 
@@ -54,46 +120,42 @@ def unsubscribe(message):
         message: Objeto de mensaje de Telegram.
     """
     user_id = message.chat.id
-    if user_id in subscribed_users:
-        subscribed_users.remove(user_id)
-        with open('subscribed_users.json', 'w') as file:
-            json.dump(subscribed_users, file)
+    if user_id in safe_users:
+        safe_users.remove(user_id)
+        with open('safe_users.json', 'w') as file:
+            json.dump(safe_users, file)
         telegram_bot.reply_to(
-            message, "Te has desuscrito correctamente. Ya no recibirás notificaciones.")
+            message, "Has borrado tu perfil del bot exitosamente. Hasta luego!")
     else:
         telegram_bot.reply_to(message, "No estás suscrito actualmente.")
 
-
-def send_photo_to_subscribers(photo_path):
-    """
-    Función para enviar una foto a todos los usuarios suscritos.
-
-    Params:
-        photo_path: Ruta de la foto a enviar.
-    """
-    with open(photo_path, 'rb') as photo:
-        for user_id in subscribed_users:
-            telegram_bot.send_photo(user_id, photo)
-
-
-def send_message_to_subscribers(message_text):
+def send_message_to_safe_users(message_text):
     """
     Función para enviar un mensaje a todos los usuarios suscritos.
 
     Params:
         message_text: Texto del mensaje a enviar.
     """
-    for user_id in subscribed_users:
+    for user_id in safe_users:
         telegram_bot.send_message(user_id, message_text)
 
-# def something_happens():
+def save_facial_recog_photo(message):
     """
-    Función de ejemplo para activar el envío de una foto.
-    """
-    # Tu lógica aquí para detectar un evento
-    # Suponiendo que tienes una variable photo_path que contiene la ruta de la foto
-    # send_photo_to_subscribers(photo_path)
+    Función para registrar una foto de reconocimiento facial del usuario.
 
+    Params:
+        message: Objeto de mensaje de Telegram.
+    """
+    telegram_bot.reply_to(
+            message, "Proximamente!")
+
+def usersExists():
+    """
+    Función para saber si existen usuarios registrados en el bot.
+
+    Returns: Bool
+    """
+    return len(safe_users.keys()) > 0
 
 def init():
     """
@@ -104,13 +166,26 @@ def init():
     def handle_start(message):
         start(message)
 
-    @telegram_bot.message_handler(commands=['subscribe'])
-    def handle_subscribe(message):
-        subscribe(message)
+    @telegram_bot.message_handler(commands=['registro'])
+    def handle_register(message):
+        register_user(message)
 
-    @telegram_bot.message_handler(commands=['unsubscribe'])
-    def handle_unsubscribe(message):
-        unsubscribe(message)
+    @telegram_bot.message_handler(func=lambda message: message.chat.id in safe_users and safe_users[message.chat.id]['state'] == 'awaiting_name')
+    def handle_name_input(message):
+        handle_name_input(message)
+            
+    # Handler for receiving the master password
+    @telegram_bot.message_handler(func=lambda message: message.chat.id in safe_users and safe_users[message.chat.id]['state'] == 'awaiting_password')
+    def handle_password_input(message):
+        handle_password_input(message)
+
+    @telegram_bot.message_handler(commands=['nuevoreconocimientofacial'])
+    def handle_new_photo_rec(message):
+        save_facial_recog_photo(message)
+
+    @telegram_bot.message_handler(commands=['borrarperfil'])
+    def handle_delete_profile(message):
+        delete_safe_user(message)
 
     while True:
         telegram_bot.polling()

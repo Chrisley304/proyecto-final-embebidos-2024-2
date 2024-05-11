@@ -1,5 +1,5 @@
 # Project specific
-subscribed_users.json
+safe_users.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

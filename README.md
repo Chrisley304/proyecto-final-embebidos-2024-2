@@ -28,6 +28,16 @@ cp .env.example .env
 python3 src/main.py
 ```
 
+## Comandos de Telegram
+
+- `/start`: Inicia el bot
+- `/solicitud`: Envia una solicitud a los "super usuarios"
+- `registro`: Una vez autorizado o primer usuario, registrate en el bot enviando tu nombre y una foto.
+- `/nuevoreconocimientofacial`: Una vez registrado, envia una foto para añadirlo al reconocimiento facial.
+- `/nuevahuella`: Una vez registrado, añade una huella al reconocimiento facial.
+- `/nuevorfid`: Una vez registrado, añade un tag RFID.
+- `/desbloquear`: Si tienes problemas con los sensores, utiliza tu contraseña maestra para abrirla.
+
 ## Autores
 - Christian Leyva
 - Francisco Cardoso
