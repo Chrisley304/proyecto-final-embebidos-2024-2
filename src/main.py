@@ -21,7 +21,7 @@ def hardware_init():
     fingerprint_utils.init()
     # TODO: Verificar que funcione bien lo del enrolamiento y buscar huella por el tema del id(numero)
     while True:
-        if security_box_controller.isSystemActive:
+        if security_box_controller.isSystemActive():
             if fingerprint_utils.get_fingerprint():
                 print("Detected #", fingerprint_utils.finger.finger_id, "with confidence", fingerprint_utils.finger.confidence)
                 # something_happens()

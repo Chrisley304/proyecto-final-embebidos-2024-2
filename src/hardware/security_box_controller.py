@@ -1,3 +1,4 @@
 from utils.telegram_utils import usersExists
 
-isSystemActive = usersExists()
+def isSystemActive():
+    return usersExists()
