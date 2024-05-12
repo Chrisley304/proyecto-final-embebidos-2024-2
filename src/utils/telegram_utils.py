@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from telebot import telebot, types
 import json
-from hardware import security_box_controller
+from hardware import security_box_controller, rfid_utils
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -192,13 +192,22 @@ def save_facial_recog_photo(message):
     telegram_bot.reply_to(
             message, "Proximamente!")
 
-def usersExists():
+def record_rfid_card(message:types.Message):
     """
-    Función para saber si existen usuarios registrados en el bot.
+    Función para registrar una foto de reconocimiento facial del usuario.
 
-    Returns: Bool
+    Params:
+        message: Objeto de mensaje de Telegram.
     """
-    return len(safe_users.keys()) > 0
+    user_id = str(message.from_user.id)
+
+    if isUserAutorized(user_id):
+        telegram_bot.reply_to(message, "Acerca el tag RFID al sensor")
+        rfid_id = rfid_utils.read_rfid_id()
+        if rfid_utils.record_rfid_tag(rfid_id, safe_users[user_id]["name"]):
+            telegram_bot.send_message(user_id,"El Tag fue registrado exitosamente")
+        else:
+            telegram_bot.send_message(user_id,"El Tag ya esta registrado")
 
 def init():
     """
@@ -225,5 +234,25 @@ def init():
     def handle_unlock_safe(message):
         unlock_safe_with_master_password(message)
 
+    @telegram_bot.message_handler(commands=['nuevorfid'])
+    def handle_record_new_rfid(message):
+        record_rfid_card(message)
+
     while True:
         telegram_bot.polling()
+
+def usersExists():
+    """
+    Función para saber si existen usuarios registrados en el bot.
+
+    Returns: Bool
+    """
+    return len(safe_users.keys()) > 0
+
+def isUserAutorized(user_id):
+    """
+    Función para saber si el usuario esta registrado correctamente.
+
+    Returns: Bool
+    """
+    return user_id in safe_users and safe_users[user_id]['state'] == 'registered'
