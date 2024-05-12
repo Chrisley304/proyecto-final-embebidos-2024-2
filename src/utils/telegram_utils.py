@@ -41,15 +41,15 @@ def register_user(message):
     """
     user_id = message.chat.id
     if not usersExists() or (user_id in safe_users and safe_users[user_id]['state'] == "awaiting_register"):
-        telegram_bot.reply_to(
-            message, "¡Bienvenido! Por favor envía tu nombre para completar el registro.")
-        
+        sent_msg = telegram_bot.send_message(message.chat.id, "¡Bienvenido! Por favor envía tu nombre para completar el registro.", parse_mode="Markdown")
         # Cambiar el estado del usuario a 'awaiting_name'
         safe_users[user_id] = {'state': 'awaiting_name'}
         
         # Escribir en el archivo JSON
         with open('safe_users.json', 'w') as file:
             json.dump(safe_users, file)
+
+        telegram_bot.register_next_step_handler(sent_msg, handle_name_input)
     elif user_id in safe_users:
         telegram_bot.reply_to(
             message, "Ya estas registrado.")
@@ -70,11 +70,13 @@ def handle_name_input(message):
         user_name = message.text
         
         # Pide al usuario una contraseña maestra para emergencias
-        telegram_bot.send_message(user_id, "Ahora por favor envía una contraseña maestra.")
+        sent_msg = telegram_bot.send_message(user_id, "Ahora por favor envía una contraseña maestra 🤫.")
 
         # Cambiar el estado del usuario a 'awaiting_password'
         safe_users[user_id]['name'] = user_name
         safe_users[user_id]['state'] = 'awaiting_password'
+
+        telegram_bot.register_next_step_handler(sent_msg, handle_password_input)
         
         # Escribir en el archivo JSON
         with open('safe_users.json', 'w') as file:
@@ -84,7 +86,7 @@ def handle_name_input(message):
         telegram_bot.send_message(
             user_id, "Error: No estás en el proceso de registro o ya has completado el registro.")
 
-def handle_password(message):
+def handle_password_input(message):
     """
     Function to handle the master password submission.
 
@@ -105,7 +107,7 @@ def handle_password(message):
             json.dump(safe_users, file)
 
         telegram_bot.send_message(
-            user_id, "¡Registro exitoso! Ahora eres un usuario autorizado.")
+            user_id, "¡Registro exitoso! Ahora eres un usuario autorizado 🎉.")
     else:
         telegram_bot.send_message(
             user_id, "Error: No estás en el proceso de registro o ya has completado el registro.")
@@ -169,15 +171,6 @@ def init():
     @telegram_bot.message_handler(commands=['registro'])
     def handle_register(message):
         register_user(message)
-
-    @telegram_bot.message_handler(func=lambda message: message.chat.id in safe_users and safe_users[message.chat.id]['state'] == 'awaiting_name')
-    def handle_name_input(message):
-        handle_name_input(message)
-            
-    # Handler for receiving the master password
-    @telegram_bot.message_handler(func=lambda message: message.chat.id in safe_users and safe_users[message.chat.id]['state'] == 'awaiting_password')
-    def handle_password_input(message):
-        handle_password_input(message)
 
     @telegram_bot.message_handler(commands=['nuevoreconocimientofacial'])
     def handle_new_photo_rec(message):

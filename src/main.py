@@ -18,7 +18,6 @@ from hardware import fingerprint_utils, security_box_controller
 
 
 def hardware_init():
-    fingerprint_utils.init()
     # TODO: Verificar que funcione bien lo del enrolamiento y buscar huella por el tema del id(numero)
     while True:
         if security_box_controller.isSystemActive():
@@ -38,7 +37,7 @@ if __name__ == '__main__':
         print("Starting bot...")
         telegram_bot_thread = threading.Thread(target=telegram_utils.init)
         hardware_thread = threading.Thread(target=hardware_init)
-        lcd_utils.lcd_init()
+        # lcd_utils.lcd_init()
 
         # Start the threads before joining them
         telegram_bot_thread.start()
