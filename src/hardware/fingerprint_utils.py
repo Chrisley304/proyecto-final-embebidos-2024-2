@@ -1,9 +1,17 @@
 import time
 import serial
 import adafruit_fingerprint
+import json
 
 uart = serial.Serial("/dev/ttyUSB0", baudrate=57600, timeout=1)
 finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
+
+# Carga de usuarios suscritos desde archivo JSON
+try:
+    with open('auth_fingerprints.json', 'r') as file:
+        auth_fingerprints = json.load(file)
+except FileNotFoundError:
+    auth_fingerprints = []
 
 def get_fingerprint():
     """Get a finger print image, template it, and see if it matches!"""
@@ -65,9 +73,18 @@ def get_fingerprint_detail():
 
 
 # pylint: disable=too-many-statements
-def enroll_finger():
-    """Take a 2 finger images and template it, then store in 'location'"""
-    location = get_num(finger.library_size)
+def enroll_finger(username:str):
+    """
+    Take a 2 finger images and template it, then store in 'location'
+    
+    Params:
+        location: integer with the location in array of the fingerprint
+    """
+    location = len(auth_fingerprints)
+
+    if location < 0 or location > finger.library_size - 1:
+        return False
+
     for fingerimg in range(1, 3):
         if fingerimg == 1:
             print("Place finger on sensor...", end="")
@@ -132,6 +149,11 @@ def enroll_finger():
         else:
             print("Other error")
         return False
+
+    auth_fingerprints.append({"location": location, "user": username})
+
+    with open('auth_fingerprints.json', 'w') as file:
+            json.dump(auth_fingerprints, file)
 
     return True
 

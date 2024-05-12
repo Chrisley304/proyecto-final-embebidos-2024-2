@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from telebot import telebot, types
 import json
-from hardware import security_box_controller, rfid_utils
+from hardware import security_box_controller, rfid_utils, fingerprint_utils
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -17,6 +17,7 @@ try:
 except FileNotFoundError:
     safe_users = {}
 
+isRecordingInput = False
 
 def start(message):
     """
@@ -202,12 +203,37 @@ def record_rfid_card(message:types.Message):
     user_id = str(message.from_user.id)
 
     if isUserAutorized(user_id):
+        isRecordingInput = True
         telegram_bot.reply_to(message, "Acerca el tag RFID al sensor")
         rfid_id = rfid_utils.read_rfid_id()
         if rfid_utils.record_rfid_tag(rfid_id, safe_users[user_id]["name"]):
             telegram_bot.send_message(user_id,"El Tag fue registrado exitosamente")
         else:
             telegram_bot.send_message(user_id,"El Tag ya esta registrado")
+
+    isRecordingInput = False
+
+def record_fingerprint(message:types.Message):
+    """
+    Función para registrar una huella dactilar del usuario.
+
+    Params:
+        message: Objeto de mensaje de Telegram.
+    """
+    user_id = str(message.from_user.id)
+
+    if isUserAutorized(user_id):
+        isRecordingInput = True
+        user_name = safe_users[user_id]['name']
+        telegram_bot.reply_to(message, "Coloca tu huella en el sensor...")
+        if fingerprint_utils.enroll_finger(user_name):
+            telegram_bot.send_message(user_id, "Huella registrada exitosamente")
+        else:
+            telegram_bot.send_message(user_id, "Error al registrar la huella")
+    else:
+        telegram_bot.reply_to(message, "No tienes permiso para hacer eso.")
+
+    isRecordingInput = False
 
 def init():
     """
@@ -237,6 +263,10 @@ def init():
     @telegram_bot.message_handler(commands=['nuevorfid'])
     def handle_record_new_rfid(message):
         record_rfid_card(message)
+
+    @telegram_bot.message_handler(commands=['nuevahuella'])
+    def handle_new_fingerprint(message):
+        record_fingerprint(message)
 
     while True:
         telegram_bot.polling()

@@ -4,10 +4,10 @@ import schedule
 import time
 import threading
 from utils import telegram_utils, notion_utils, lcd_utils
-from hardware import fingerprint_utils, security_box_controller
+from hardware import fingerprint_utils, security_box_controller, rfid_utils
 
 def isSystemActive():
-    return telegram_utils.usersExists()
+    return telegram_utils.usersExists() and not telegram_utils.isRecordingInput
 
 # def something_happens():
 #     """
@@ -18,18 +18,26 @@ def isSystemActive():
 #     telegram_utils.send_message_to_safe_users(message_text)
 #     notion_utils.add_log_entry_to_notion()
 
-
-def hardware_init():
-    # TODO: Verificar que funcione bien lo del enrolamiento y buscar huella por el tema del id(numero)
-    while True:
+def fingerprint_scanner_init():
+     while True:
         if isSystemActive():
             if fingerprint_utils.get_fingerprint():
-                print("Detected #", fingerprint_utils.finger.finger_id, "with confidence", fingerprint_utils.finger.confidence)
-                # something_happens()
+                detected_id = fingerprint_utils.finger.finger_id
+                if detected_id < len(fingerprint_utils.auth_fingerprints):
+                    print("Detected #", fingerprint_utils.finger.finger_id, "with confidence", fingerprint_utils.finger.confidence)
+                else:
+                    print("Fingerprint not authorized")
+
+        time.sleep(2)
+
+def rfid_scanner_init():
+    while True:
+        if isSystemActive():
+            if rfid_utils.unlock_rfid():
+                print("CAJA DESBLOQUEADA")
             else:
-                fingerprint_utils.enroll_finger()
-        else:
-            print("Access hardware unnactive. Waiting for user registration in Telegram...")
+                if isSystemActive():
+                    print("ACCESO DENEGADO")
 
         time.sleep(2)
 
@@ -38,16 +46,19 @@ if __name__ == '__main__':
     try:
         print("Starting bot...")
         telegram_bot_thread = threading.Thread(target=telegram_utils.init)
-        hardware_thread = threading.Thread(target=hardware_init)
+        fingerprint_thread = threading.Thread(target=fingerprint_scanner_init)
+        rfid_thread = threading.Thread(target=rfid_scanner_init)
         # lcd_utils.lcd_init()
 
         # Start the threads before joining them
         telegram_bot_thread.start()
-        hardware_thread.start()
+        fingerprint_thread.start()
+        rfid_thread.start()
 
         # Esperar a que ambos hilos terminen
         telegram_bot_thread.join()
-        hardware_thread.join()
+        fingerprint_thread.join()
+        rfid_thread.join()
     except KeyboardInterrupt:
         pass
     finally:

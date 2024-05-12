@@ -2,6 +2,7 @@
 from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 import json
+from hardware import security_box_controller
 
 reader = SimpleMFRC522()
 
@@ -44,3 +45,18 @@ def read_rfid_id():
         return str(id)
     except:
         GPIO.cleanup()
+
+def unlock_rfid():
+    """
+    Función para leer tags RFID para desbloquear la caja si el ID del RFID esta autorizado.
+
+    Returns: Bool
+    """
+
+    id = read_rfid_id()
+
+    if id in authorized_rfid:
+        security_box_controller.unlockSafe()
+        return True
+    else:
+        return False
