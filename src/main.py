@@ -6,6 +6,8 @@ import threading
 from utils import telegram_utils, notion_utils, lcd_utils
 from hardware import fingerprint_utils, security_box_controller
 
+def isSystemActive():
+    return telegram_utils.usersExists()
 
 # def something_happens():
 #     """
@@ -20,7 +22,7 @@ from hardware import fingerprint_utils, security_box_controller
 def hardware_init():
     # TODO: Verificar que funcione bien lo del enrolamiento y buscar huella por el tema del id(numero)
     while True:
-        if security_box_controller.isSystemActive():
+        if isSystemActive():
             if fingerprint_utils.get_fingerprint():
                 print("Detected #", fingerprint_utils.finger.finger_id, "with confidence", fingerprint_utils.finger.confidence)
                 # something_happens()

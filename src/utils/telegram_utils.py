@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from telebot import telebot, types
 import json
+from hardware import security_box_controller
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -32,18 +33,19 @@ def start(message):
             message, "¡Hola! Soy securitybot, quien resguarda la caja fuerte de los Chambeadores!.\nDebes estar autorizado para acceder a los controles de la caja fuerte. Envía /solicitud para enviar una solicitud de autorización para continuar.")
 
 
-def register_user(message):
+def register_user(message:types.Message):
     """
     Función para manejar el proceso de registro.
 
     Params:
         message: Objeto de mensaje de Telegram.
     """
-    user_id = message.chat.id
+    user_id = str(message.from_user.id)
+    chat_id = message.chat.id
     if not usersExists() or (user_id in safe_users and safe_users[user_id]['state'] == "awaiting_register"):
-        sent_msg = telegram_bot.send_message(message.chat.id, "¡Bienvenido! Por favor envía tu nombre para completar el registro.", parse_mode="Markdown")
+        sent_msg = telegram_bot.send_message(chat_id, "¡Bienvenido! Por favor envía tu nombre para completar el registro.", parse_mode="Markdown")
         # Cambiar el estado del usuario a 'awaiting_name'
-        safe_users[user_id] = {'state': 'awaiting_name'}
+        safe_users[user_id] = {'state': 'awaiting_name', 'chat_id': chat_id}
         
         # Escribir en el archivo JSON
         with open('safe_users.json', 'w') as file:
@@ -64,13 +66,14 @@ def handle_name_input(message):
     Params:
         message: Objeto de mensaje de Telegram.
     """
-    user_id = message.chat.id
+    user_id = str(message.from_user.id)
+    chat_id = message.chat.id
     if user_id in safe_users and safe_users[user_id]['state'] == 'awaiting_name':
         # Guardar el nombre del usuario
         user_name = message.text
         
         # Pide al usuario una contraseña maestra para emergencias
-        sent_msg = telegram_bot.send_message(user_id, "Ahora por favor envía una contraseña maestra 🤫.")
+        sent_msg = telegram_bot.send_message(chat_id, "Ahora por favor envía una contraseña maestra 🤫.")
 
         # Cambiar el estado del usuario a 'awaiting_password'
         safe_users[user_id]['name'] = user_name
@@ -93,7 +96,8 @@ def handle_password_input(message):
     Params:
         message: Telegram message object.
     """
-    user_id = message.chat.id
+    user_id = str(message.from_user.id)
+    chat_id = message.chat.id
     if user_id in safe_users and safe_users[user_id]['state'] == 'awaiting_password':
         # Save the user's master password
         master_password = message.text
@@ -107,11 +111,10 @@ def handle_password_input(message):
             json.dump(safe_users, file)
 
         telegram_bot.send_message(
-            user_id, "¡Registro exitoso! Ahora eres un usuario autorizado 🎉.")
+            chat_id, "¡Registro exitoso! Ahora eres un usuario autorizado 🎉.")
     else:
         telegram_bot.send_message(
-            user_id, "Error: No estás en el proceso de registro o ya has completado el registro.")
-
+            chat_id, "Error: No estás en el proceso de registro o ya has completado el registro.")
 
 
 def delete_safe_user(message):
@@ -121,15 +124,53 @@ def delete_safe_user(message):
     Params:
         message: Objeto de mensaje de Telegram.
     """
-    user_id = message.chat.id
+    user_id = str(message.from_user.id)
     if user_id in safe_users:
-        safe_users.remove(user_id)
+        del safe_users[user_id]
         with open('safe_users.json', 'w') as file:
             json.dump(safe_users, file)
         telegram_bot.reply_to(
             message, "Has borrado tu perfil del bot exitosamente. Hasta luego!")
     else:
-        telegram_bot.reply_to(message, "No estás suscrito actualmente.")
+        telegram_bot.reply_to(message, "No estás registrado actualmente.")
+        print(f"UserID: {user_id}")
+        print(safe_users)
+
+def unlock_safe_with_master_password(message):
+    """
+    Función para desbloquear la caja fuerte con la contraseña maestra.
+
+    Params:
+        message_text: Texto del mensaje a enviar.
+    """
+    user_id = str(message.from_user.id)
+
+    if user_id in safe_users:
+        sent_msg = telegram_bot.send_message(user_id, "Envía tu contraseña maestra para desbloquear la caja fuerte (recuerda borrar el mensaje después de eso).")
+        telegram_bot.register_next_step_handler(sent_msg, handle_unlock_with_password_input)
+    else:
+        telegram_bot.reply_to(message, "No tienes permiso para hacer eso.")
+
+def handle_unlock_with_password_input(message:types.Message):
+    """
+    Función para recibir la contraseña maestra y desbloquear la caja fuerte.
+
+    Params:
+        message_text: Texto del mensaje a enviar.
+    """
+    user_id = str(message.from_user.id)
+
+    if user_id in safe_users:
+        password_input = message.text
+
+        if password_input == safe_users[user_id]["password"]:
+            security_box_controller.unlockSafe()
+            telegram_bot.send_message(user_id, "Desbloqueando caja fuerte ahora...")
+        else:
+            telegram_bot.send_message(user_id, "Contraseña incorrecta.")
+    else:
+        telegram_bot.reply_to(message, "No tienes permiso para hacer eso.")
+
 
 def send_message_to_safe_users(message_text):
     """
@@ -138,8 +179,8 @@ def send_message_to_safe_users(message_text):
     Params:
         message_text: Texto del mensaje a enviar.
     """
-    for user_id in safe_users:
-        telegram_bot.send_message(user_id, message_text)
+    for user_id in safe_users.keys():
+        telegram_bot.send_message(safe_users[user_id]["chat_id"], message_text)
 
 def save_facial_recog_photo(message):
     """
@@ -179,6 +220,10 @@ def init():
     @telegram_bot.message_handler(commands=['borrarperfil'])
     def handle_delete_profile(message):
         delete_safe_user(message)
+
+    @telegram_bot.message_handler(commands=['desbloquear'])
+    def handle_unlock_safe(message):
+        unlock_safe_with_master_password(message)
 
     while True:
         telegram_bot.polling()
