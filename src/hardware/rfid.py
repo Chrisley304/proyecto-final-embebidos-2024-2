@@ -81,4 +81,5 @@ class RFID:
                 return True
             else:
                 print("ACCESO DENEGADO")
+                security_box_controller.playAlarm()
                 return False

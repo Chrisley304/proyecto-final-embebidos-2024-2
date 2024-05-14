@@ -2,6 +2,7 @@ import time
 import serial
 import adafruit_fingerprint
 import json
+from hardware import security_box_controller
 
 class Fingerprint:
 
@@ -26,11 +27,13 @@ class Fingerprint:
         # print("Waiting for image...")
         if self.finger.get_image() != adafruit_fingerprint.OK:
             return False
-        print("Templating...")
+        print("Reading fingerprint...")
         if self.finger.image_2_tz(1) != adafruit_fingerprint.OK:
             return False
-        print("Searching...")
+        print("Searching fingerprint...")
         if self.finger.finger_search() != adafruit_fingerprint.OK:
+            print("Fingerprint not found")
+            security_box_controller.playAlarm()
             return False
         return True
 
@@ -202,6 +205,14 @@ class Fingerprint:
             return True
         return False
 
+    def isFingerprintAuth(self, detected_id):
+        """
+            Función que devuelve si el id detectado esta autorizado para abrir la caja o no.
+
+            Params:
+                detected_id: ID de la huella detectada.
+        """
+        return detected_id < len(self.auth_fingerprints)
 
     ##################################################
 
