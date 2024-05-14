@@ -5,6 +5,8 @@ import json
 from hardware.security_box_controller import RFID_sensor, unlockSafe, Fingerprint_sensor
 from main import isTakingInput
 import threading
+import adafruit_fingerprint
+import time
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -119,7 +121,6 @@ def handle_password_input(message):
         telegram_bot.send_message(
             chat_id, "Error: No estás en el proceso de registro o ya has completado el registro.")
 
-
 def delete_safe_user(message):
     """
     Función para manejar la cancelación de la suscripción a las notificaciones.
@@ -173,7 +174,6 @@ def handle_unlock_with_password_input(message:types.Message):
             telegram_bot.send_message(user_id, "Contraseña incorrecta.")
     else:
         telegram_bot.reply_to(message, "No tienes permiso para hacer eso.")
-
 
 def send_message_to_safe_users(message_text):
     """
@@ -229,8 +229,8 @@ def record_fingerprint(message:types.Message):
         while isTakingInput:
             pass
         user_name = safe_users[user_id]['name']
-        telegram_bot.reply_to(message, "Coloca tu huella en el sensor...")
-        if Fingerprint_sensor.enroll_finger(user_name):
+        # telegram_bot.reply_to(message, "Coloca tu huella en el sensor...")
+        if enroll_fingerprint_with_telegram_feedback(user_name, user_id):
             telegram_bot.send_message(user_id, "Huella registrada exitosamente")
         else:
             telegram_bot.send_message(user_id, "Error al registrar la huella")
@@ -238,6 +238,16 @@ def record_fingerprint(message:types.Message):
         telegram_bot.reply_to(message, "No tienes permiso para hacer eso.")
 
     istelegramRecordingInput = False
+
+def sendMesagetoUser(message:str, user_id:str):
+    """
+    Función para enviar un mensaje a un usuario en especifico.
+
+    Params:
+        message: Cadena de texto a enviar.
+        user_id: ID del usuario al que se va a enviar el mensaje.
+    """
+    telegram_bot.send_message(user_id, message)
 
 def init(lock: threading.Lock):
     """
@@ -293,3 +303,93 @@ def isUserAutorized(user_id):
     Returns: Bool
     """
     return user_id in safe_users and safe_users[user_id]['state'] == 'registered'
+
+def enroll_fingerprint_with_telegram_feedback(username:str, user_id:str):
+    """
+    Take a 2 finger images and template it, then store in 'location'
+    
+    Params:
+        username: Name of the user that is registering the fingerprint.
+        user_id: Telegram ID of the user to send feedback.
+    """
+    location = len(Fingerprint_sensor.auth_fingerprints)
+
+    if location < 0 or location > Fingerprint_sensor.finger.library_size - 1:
+        return False
+
+    for fingerimg in range(1, 3):
+        if fingerimg == 1:
+            sendMesagetoUser("Coloca el dedo en el sensor...", user_id)
+        else:
+            sendMesagetoUser("Coloca el mismo dedo en el sensor de nuevo...", user_id)
+
+        while True:
+            i = Fingerprint_sensor.finger.get_image()
+            if i == adafruit_fingerprint.OK:
+                print("Image taken")
+                break
+            if i == adafruit_fingerprint.NOFINGER:
+                print(".", end="")
+            elif i == adafruit_fingerprint.IMAGEFAIL:
+                sendMesagetoUser("Error al guardar huella digital: Intentelo de nuevo", user_id)
+                print("Imaging error")
+                return False
+            else:
+                sendMesagetoUser("Error al guardar huella digital: Intentelo de nuevo", user_id)
+                print("Other error")
+                return False
+
+        print("Templating...", end="")
+        i = Fingerprint_sensor.finger.image_2_tz(fingerimg)
+        if i == adafruit_fingerprint.OK:
+            print("Templated")
+        else:
+            if i == adafruit_fingerprint.IMAGEMESS:
+                sendMesagetoUser("Error al guardar huella digital: La imagen esta borrosa", user_id)
+            elif i == adafruit_fingerprint.FEATUREFAIL:
+                sendMesagetoUser("Error al guardar huella digital: No se identifico huella digital", user_id)
+            elif i == adafruit_fingerprint.INVALIDIMAGE:
+                sendMesagetoUser("Error al guardar huella digital: Imagen invalida", user_id)
+            else:
+                sendMesagetoUser("Error al guardar huella digital: Intentelo de nuevo", user_id)
+            return False
+
+        if fingerimg == 1:
+            sendMesagetoUser("Retira el dedo del sensor", user_id)
+            time.sleep(1)
+            while i != adafruit_fingerprint.NOFINGER:
+                sendMesagetoUser("Vuelve a colocar el dedo en el sensor", user_id)
+                i = Fingerprint_sensor.finger.get_image()
+
+    print("Creating model...", end="")
+    i = Fingerprint_sensor.finger.create_model()
+    if i == adafruit_fingerprint.OK:
+        print("Created")
+    else:
+        if i == adafruit_fingerprint.ENROLLMISMATCH:
+            sendMesagetoUser("Error al guardar huella digital: Huellas no coinciden", user_id)
+            print("Prints did not match")
+        else:
+            sendMesagetoUser("Error al guardar huella digital: Intentelo de nuevo", user_id)
+            print("Other error")
+        return False
+
+    print("Storing model #%d..." % location, end="")
+    i = Fingerprint_sensor.finger.store_model(location)
+    if i == adafruit_fingerprint.OK:
+        print("Stored")
+    else:
+        if i == adafruit_fingerprint.BADLOCATION:
+            print("Bad storage location")
+        elif i == adafruit_fingerprint.FLASHERR:
+            print("Flash storage error")
+        else:
+            print("Other error")
+        return False
+
+    Fingerprint_sensor.auth_fingerprints.append({"location": location, "user": username})
+
+    with open('auth_fingerprints.json', 'w') as file:
+            json.dump(Fingerprint_sensor.auth_fingerprints, file)
+
+    return True
