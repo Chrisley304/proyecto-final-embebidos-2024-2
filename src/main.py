@@ -4,10 +4,13 @@ import schedule
 import time
 import threading
 from utils import telegram_utils, notion_utils, lcd_utils
-from hardware import fingerprint_utils, security_box_controller, rfid_utils
+from hardware.security_box_controller import RFID_sensor, Fingerprint_sensor
 
 def isSystemActive():
     return telegram_utils.usersExists() and not telegram_utils.isRecordingInput
+
+isTakingInput = False
+hardware_lock = threading.Lock()
 
 # def something_happens():
 #     """
@@ -18,48 +21,41 @@ def isSystemActive():
 #     telegram_utils.send_message_to_safe_users(message_text)
 #     notion_utils.add_log_entry_to_notion()
 
-def fingerprint_scanner_init():
+def hardware_unlock_init(lock: threading.Lock):
      while True:
         if isSystemActive():
-            if fingerprint_utils.get_fingerprint():
-                detected_id = fingerprint_utils.finger.finger_id
-                if detected_id < len(fingerprint_utils.auth_fingerprints):
-                    print("Detected #", fingerprint_utils.finger.finger_id, "with confidence", fingerprint_utils.finger.confidence)
+            with lock:
+                isTakingInput = True
+                if Fingerprint_sensor.get_fingerprint():
+                    detected_id = Fingerprint_sensor.finger.finger_id
+                    if detected_id < len(Fingerprint_sensor.auth_fingerprints):
+                        print("Detected #", Fingerprint_sensor.finger.finger_id, "with confidence", Fingerprint_sensor.finger.confidence)
+                    else:
+                        print("Fingerprint not authorized")
                 else:
-                    print("Fingerprint not authorized")
+                    RFID_sensor.unlock_rfid()
+                
+                isTakingInput = False
 
-        time.sleep(2)
-
-def rfid_scanner_init():
+def test_init():
     while True:
-        if isSystemActive():
-            if rfid_utils.unlock_rfid():
-                print("CAJA DESBLOQUEADA")
-            else:
-                if isSystemActive():
-                    print("ACCESO DENEGADO")
-
-        time.sleep(2)
-
+        print("HOLA")
+        time.sleep(1.5)
 
 if __name__ == '__main__':
     try:
         print("Starting bot...")
-        telegram_bot_thread = threading.Thread(target=telegram_utils.init)
-        fingerprint_thread = threading.Thread(target=fingerprint_scanner_init)
-        rfid_thread = threading.Thread(target=rfid_scanner_init)
+        telegram_bot_thread = threading.Thread(target=telegram_utils.init, args=[hardware_lock])
+        fingerprint_thread = threading.Thread(target=hardware_unlock_init, args=[hardware_lock])
+        # test_thread = threading.Thread(target=test_init)
         # lcd_utils.lcd_init()
 
         # Start the threads before joining them
         telegram_bot_thread.start()
         fingerprint_thread.start()
-        rfid_thread.start()
+        # test_thread.start()
 
-        # Esperar a que ambos hilos terminen
-        telegram_bot_thread.join()
-        fingerprint_thread.join()
-        rfid_thread.join()
     except KeyboardInterrupt:
         pass
-    finally:
-        lcd_utils.lcd_byte(0x01, lcd_utils.LCD_CMD)
+    # finally:
+        # lcd_utils.lcd_byte(0x01, lcd_utils.LCD_CMD)

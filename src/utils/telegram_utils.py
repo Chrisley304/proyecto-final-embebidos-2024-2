@@ -2,7 +2,9 @@ import os
 from dotenv import load_dotenv
 from telebot import telebot, types
 import json
-from hardware import security_box_controller, rfid_utils, fingerprint_utils
+from hardware.security_box_controller import RFID_sensor, unlockSafe, Fingerprint_sensor
+from main import isTakingInput
+import threading
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -165,7 +167,7 @@ def handle_unlock_with_password_input(message:types.Message):
         password_input = message.text
 
         if password_input == safe_users[user_id]["password"]:
-            security_box_controller.unlockSafe()
+            unlockSafe()
             telegram_bot.send_message(user_id, "Desbloqueando caja fuerte ahora...")
         else:
             telegram_bot.send_message(user_id, "Contraseña incorrecta.")
@@ -205,8 +207,8 @@ def record_rfid_card(message:types.Message):
     if isUserAutorized(user_id):
         isRecordingInput = True
         telegram_bot.reply_to(message, "Acerca el tag RFID al sensor")
-        rfid_id = rfid_utils.read_rfid_id()
-        if rfid_utils.record_rfid_tag(rfid_id, safe_users[user_id]["name"]):
+        rfid_id = RFID_sensor.read_rfid_id()
+        if RFID_sensor.record_rfid_tag(rfid_id, safe_users[user_id]["name"]):
             telegram_bot.send_message(user_id,"El Tag fue registrado exitosamente")
         else:
             telegram_bot.send_message(user_id,"El Tag ya esta registrado")
@@ -223,22 +225,25 @@ def record_fingerprint(message:types.Message):
     user_id = str(message.from_user.id)
 
     if isUserAutorized(user_id):
-        isRecordingInput = True
+        istelegramRecordingInput = True
+        while isTakingInput:
+            pass
         user_name = safe_users[user_id]['name']
         telegram_bot.reply_to(message, "Coloca tu huella en el sensor...")
-        if fingerprint_utils.enroll_finger(user_name):
+        if Fingerprint_sensor.enroll_finger(user_name):
             telegram_bot.send_message(user_id, "Huella registrada exitosamente")
         else:
             telegram_bot.send_message(user_id, "Error al registrar la huella")
     else:
         telegram_bot.reply_to(message, "No tienes permiso para hacer eso.")
 
-    isRecordingInput = False
+    istelegramRecordingInput = False
 
-def init():
+def init(lock: threading.Lock):
     """
     Función para iniciar el bot de Telegram.
     """
+
     # Comandos del bot
     @telegram_bot.message_handler(commands=['start'])
     def handle_start(message):
@@ -262,11 +267,13 @@ def init():
 
     @telegram_bot.message_handler(commands=['nuevorfid'])
     def handle_record_new_rfid(message):
-        record_rfid_card(message)
+        with lock:
+            record_rfid_card(message)
 
     @telegram_bot.message_handler(commands=['nuevahuella'])
     def handle_new_fingerprint(message):
-        record_fingerprint(message)
+        with lock:
+            record_fingerprint(message)
 
     while True:
         telegram_bot.polling()
