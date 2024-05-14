@@ -24,7 +24,6 @@ python3 src/main.py
 - `/veractividad`: Revisa la ultima actividad de la caja fuerte.
 - `/reconocimientofacial`: Desbloquea la caja fuerte enviando una foto de tu cara.
 - `/desbloqueomaestro`: Si tienes problemas con los sensores, utiliza tu contraseña maestra para abrirla.
-- `/revisarsolicitudes`: Envia una solicitud a los "super usuarios".
 - `/nuevorfid`: Una vez registrado, añade un tag RFID.
 - `/nuevahuella`: Una vez registrado, añade una huella a la caja fuerte.
 - `/nuevoreconocimientofacial`: Una vez registrado, envia una foto para añadirlo al reconocimiento facial.
