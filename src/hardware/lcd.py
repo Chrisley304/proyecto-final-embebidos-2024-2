@@ -36,6 +36,9 @@ def lcd_init():
     lcd_byte(0x01, LCD_CMD)  # 000001 Clear display
     time.sleep(E_DELAY)
 
+    lcd_string("Sistema Activo",LCD_LINE_1)
+    lcd_string("Bienvenido",LCD_LINE_2)
+
 
 def lcd_byte(bits, mode):
     # Send byte to data pins

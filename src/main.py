@@ -3,7 +3,7 @@ import json
 import schedule
 import time
 import threading
-from hardware import lcd
+from hardware.lcd import lcd_init, LCD_CMD, lcd_byte
 from utils import notion, telegram
 from hardware.security_box_controller import RFID_sensor, Fingerprint_sensor, unlockSafe, playAlarm
 
@@ -13,17 +13,10 @@ def isSystemActive():
 isTakingInput = False
 hardware_lock = threading.Lock()
 
-# def something_happens():
-#     """
-#     Función de ejemplo para enviar un mensaje a todos los usuarios suscritos.
-#     """
-#     print("Enviando mensaje a los suscritos...")
-#     message_text = "¡Hola! Se ha detectado un evento en la caja de seguridad."
-#     telegram_utils.send_message_to_safe_users(message_text)
-#     notion_utils.add_log_entry_to_notion()
-
 def hardware_unlock_init(lock: threading.Lock):
-     while True:
+    lcd_init()
+
+    while True:
         if isSystemActive():
             with lock:
                 isTakingInput = True
@@ -57,5 +50,5 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         pass
-    # finally:
-        # lcd_utils.lcd_byte(0x01, lcd_utils.LCD_CMD)
+    finally:
+        lcd_byte(0x01, LCD_CMD)
