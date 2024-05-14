@@ -33,7 +33,7 @@ class Fingerprint:
         print("Searching fingerprint...")
         if self.finger.finger_search() != adafruit_fingerprint.OK:
             print("Fingerprint not found")
-            security_box_controller.playAlarm()
+            security_box_controller.playAlarm("Huella dactilar")
             return False
         return True
 
@@ -213,6 +213,16 @@ class Fingerprint:
                 detected_id: ID de la huella detectada.
         """
         return detected_id < len(self.auth_fingerprints)
+    
+    def get_fingerprint_user_name(self, detected_id):
+        """
+            Funcion para obtener el nombre del usuario detectado mediante su huella.
+
+            Params:
+                detected_id: ID de la huella detectada.
+        """
+
+        return self.auth_fingerprints[detected_id]["user"]
 
     ##################################################
 

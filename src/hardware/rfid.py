@@ -77,9 +77,20 @@ class RFID:
         if id != None:
             if id in self.authorized_rfid:
                 print("CAJA DESBLOQUEADA")
-                security_box_controller.unlockSafe()
+                user_name = self.get_rfid_user_name(id)
+                security_box_controller.unlockSafe(user_name, "RFID")
                 return True
             else:
                 print("ACCESO DENEGADO")
-                security_box_controller.playAlarm()
+                security_box_controller.playAlarm("RFID")
                 return False
+    
+    def get_rfid_user_name(self, rfid_id):
+        """
+            Funcion para obtener el nombre del usuario detectado mediante su huella.
+
+            Params:
+                rfid_id: ID de la huella detectada.
+        """
+        return self.authorized_rfid[rfid_id]["user_name"] if self.authorized_rfid[rfid_id]["user_name"] else "Desconocido"
+    

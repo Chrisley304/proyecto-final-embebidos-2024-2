@@ -30,35 +30,30 @@ def hardware_unlock_init(lock: threading.Lock):
                 if Fingerprint_sensor.get_fingerprint():
                     detected_id = Fingerprint_sensor.finger.finger_id
                     if Fingerprint_sensor.isFingerprintAuth(detected_id):
-                        print("Detected #", Fingerprint_sensor.finger.finger_id, "with confidence", Fingerprint_sensor.finger.confidence)
-                        unlockSafe()
+                        user_name = Fingerprint_sensor.get_fingerprint_user_name(detected_id)
+                        print(f"Detected #{Fingerprint_sensor.finger.finger_id} with {Fingerprint_sensor.finger.confidence} confidence. Username: {user_name}")
+                        unlockSafe(user_name, "Huella dactilar")
                         time.sleep(1.5)
                     else:
                         print("Fingerprint not authorized")
-                        playAlarm()
+                        playAlarm("Huella dactilar")
                         time.sleep(1.5)
                 else:
                     RFID_sensor.unlock_rfid()
                 
                 isTakingInput = False
 
-def test_init():
-    while True:
-        print("HOLA")
-        time.sleep(1.5)
-
 if __name__ == '__main__':
     try:
-        print("Starting bot...")
         telegram_bot_thread = threading.Thread(target=telegram.init, args=[hardware_lock])
-        fingerprint_thread = threading.Thread(target=hardware_unlock_init, args=[hardware_lock])
-        # test_thread = threading.Thread(target=test_init)
+        hardware_unlock_thread = threading.Thread(target=hardware_unlock_init, args=[hardware_lock])
         # lcd_utils.lcd_init()
 
         # Start the threads before joining them
         telegram_bot_thread.start()
-        fingerprint_thread.start()
-        # test_thread.start()
+        hardware_unlock_thread.start()
+
+        print("Safe is active")
 
     except KeyboardInterrupt:
         pass

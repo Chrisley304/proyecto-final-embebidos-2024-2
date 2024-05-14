@@ -168,7 +168,8 @@ def handle_unlock_with_password_input(message:types.Message):
         password_input = message.text
 
         if password_input == safe_users[user_id]["password"]:
-            unlockSafe()
+            user_name = safe_users[user_id]["name"] if safe_users[user_id]["name"] else "Desconocido"
+            unlockSafe(user_name,"Contraseña maestra")
             telegram_bot.send_message(user_id, "Desbloqueando caja fuerte ahora...")
         else:
             telegram_bot.send_message(user_id, "Contraseña incorrecta.")
