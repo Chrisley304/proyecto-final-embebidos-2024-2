@@ -271,7 +271,7 @@ def init(lock: threading.Lock):
     def handle_delete_profile(message):
         delete_safe_user(message)
 
-    @telegram_bot.message_handler(commands=['desbloquear'])
+    @telegram_bot.message_handler(commands=['desbloqueomaestro'])
     def handle_unlock_safe(message):
         unlock_safe_with_master_password(message)
 
