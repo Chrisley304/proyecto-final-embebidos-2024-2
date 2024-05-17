@@ -82,14 +82,26 @@ class Fingerprint:
                 print("Other error")
             return False
 
+    def delete_user_fingerprints(self, user_id):
+        """
+            Función para eliminar las huellas almacenadas de un usuario.
+
+            Params:
+                user_id: ID del usuario.
+        """
+        filtered_auth_fingers = [finger for finger in self.auth_fingerprints if finger['user_id'] != user_id]
+        print(filtered_auth_fingers)
+        with open('auth_fingerprints.json', 'w') as file:
+            json.dump(filtered_auth_fingers, file)
 
     # pylint: disable=too-many-statements
-    def enroll_finger(self, username:str):
+    def enroll_finger(self, username:str, user_id:str):
         """
         Take a 2 finger images and template it, then store in 'location'
         
         Params:
-            location: integer with the location in array of the fingerprint
+            username: Nombre del usuario
+            user_id: ID del usuario
         """
         location = len(self.auth_fingerprints)
 
@@ -161,7 +173,7 @@ class Fingerprint:
                 print("Other error")
             return False
 
-        self.auth_fingerprints.append({"location": location, "user": username})
+        self.auth_fingerprints.append({"location": location, "user_name": username, "user_id": user_id})
 
         with open('auth_fingerprints.json', 'w') as file:
                 json.dump(self.auth_fingerprints, file)
@@ -222,7 +234,7 @@ class Fingerprint:
                 detected_id: ID de la huella detectada.
         """
 
-        return self.auth_fingerprints[detected_id]["user"]
+        return self.auth_fingerprints[detected_id]["user_name"]
 
     ##################################################
 

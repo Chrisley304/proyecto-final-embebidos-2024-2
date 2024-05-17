@@ -3,7 +3,6 @@ from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 import json
 from hardware import security_box_controller
-import time
 
 class RFID:
 
@@ -22,18 +21,19 @@ class RFID:
         except FileNotFoundError:
             return {}
 
-    def record_rfid_tag(self,rfid_id, user_name):
+    def record_rfid_tag(self,rfid_id, user_name, user_id):
         """
         Función para guardar un tag RFID como llave para abrir la caja fuerte.
 
         Params:
             rfid_id: ID del tag RFID
             user_name: Nombre del usuario del tag
+            user_id: ID del usuario
         """
 
         if rfid_id not in self.authorized_rfid:
 
-            self.authorized_rfid[rfid_id] = {"user_name": user_name}
+            self.authorized_rfid[rfid_id] = {"user_name": user_name, "user_id": user_id}
             # Escribir en el archivo JSON
             with open('authorized_rfid.json', 'w') as file:
                 json.dump(self.authorized_rfid, file)
@@ -80,12 +80,10 @@ class RFID:
                 print("CAJA DESBLOQUEADA")
                 user_name = self.get_rfid_user_name(id)
                 security_box_controller.unlockSafe(user_name, "RFID")
-                time.sleep(2.5)
                 return True
             else:
                 print("ACCESO DENEGADO")
                 security_box_controller.playAlarm("RFID")
-                time.sleep(1.5)
                 return False
     
     def get_rfid_user_name(self, rfid_id):
@@ -97,3 +95,13 @@ class RFID:
         """
         return self.authorized_rfid[rfid_id]["user_name"] if self.authorized_rfid[rfid_id]["user_name"] else "Desconocido"
     
+    def delete_user_rfid(self, user_id):
+        """
+            Función para eliminar los tags rfid almacenados de un usuario.
+
+            Params:
+                user_id: ID del usuario.
+        """
+        filtered_auth_rfid = {key: value for key, value in self.authorized_rfid.items() if value["user_id"] != user_id}
+        with open('authorized_rfid.json', 'w') as file:
+            json.dump(filtered_auth_rfid, file)

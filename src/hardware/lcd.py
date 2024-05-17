@@ -36,8 +36,8 @@ def lcd_init():
     lcd_byte(0x01, LCD_CMD)  # 000001 Clear display
     time.sleep(E_DELAY)
 
-    lcd_string("Sistema Activo",LCD_LINE_1)
-    lcd_string("Bienvenido",LCD_LINE_2)
+    lcd_string("",LCD_LINE_1)
+    lcd_string("",LCD_LINE_2)
 
 
 def lcd_byte(bits, mode):
@@ -76,11 +76,3 @@ def lcd_string(message, line):
 
     for i in range(LCD_WIDTH):
         lcd_byte(ord(message[i]), LCD_CHR)
-
-
-def dpad(pos):
-    lcd_string("Vázquez Zavala", LCD_LINE_1)
-    lcd_string("Oliver Alexis", LCD_LINE_2)
-    lcd_string("", LCD_LINE_1)
-    lcd_string("", LCD_LINE_2)
-    print("Toca el boton")

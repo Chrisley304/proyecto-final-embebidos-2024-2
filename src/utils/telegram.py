@@ -7,6 +7,7 @@ from main import isTakingInput
 import threading
 import adafruit_fingerprint
 import time
+from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -130,9 +131,13 @@ def delete_safe_user(message):
     """
     user_id = str(message.from_user.id)
     if user_id in safe_users:
+        Fingerprint_sensor.delete_user_fingerprints(user_id)
+        RFID_sensor.delete_user_rfid(user_id)
+
         del safe_users[user_id]
         with open('safe_users.json', 'w') as file:
             json.dump(safe_users, file)
+
         telegram_bot.reply_to(
             message, "Has borrado tu perfil del bot exitosamente. Hasta luego!")
     else:
@@ -208,11 +213,13 @@ def record_rfid_card(message:types.Message):
     if isUserAutorized(user_id):
         isRecordingInput = True
         telegram_bot.reply_to(message, "Acerca el tag RFID al sensor")
+        lcd_string("Acerca el tag", LCD_LINE_1)
+        lcd_string("para registrarlo", LCD_LINE_2)
         rfid_id = RFID_sensor.read_rfid_id()
-        if RFID_sensor.record_rfid_tag(rfid_id, safe_users[user_id]["name"]):
-            telegram_bot.send_message(user_id,"El Tag fue registrado exitosamente")
+        if RFID_sensor.record_rfid_tag(rfid_id, safe_users[user_id]["name"], user_id):
+            telegram_bot.send_message(user_id, "El Tag fue registrado exitosamente")
         else:
-            telegram_bot.send_message(user_id,"El Tag ya esta registrado")
+            telegram_bot.send_message(user_id, "El Tag ya esta registrado")
 
     isRecordingInput = False
 
@@ -230,7 +237,7 @@ def record_fingerprint(message:types.Message):
         while isTakingInput:
             pass
         user_name = safe_users[user_id]['name']
-        # telegram_bot.reply_to(message, "Coloca tu huella en el sensor...")
+
         if enroll_fingerprint_with_telegram_feedback(user_name, user_id):
             telegram_bot.send_message(user_id, "Huella registrada exitosamente")
         else:
@@ -320,8 +327,12 @@ def enroll_fingerprint_with_telegram_feedback(username:str, user_id:str):
 
     for fingerimg in range(1, 3):
         if fingerimg == 1:
+            lcd_string("Coloca el dedo", LCD_LINE_1)
+            lcd_string("en el sensor", LCD_LINE_2)
             sendMesagetoUser("Coloca el dedo en el sensor...", user_id)
         else:
+            lcd_string("Coloca el dedo", LCD_LINE_1)
+            lcd_string("en el sensor", LCD_LINE_2)
             sendMesagetoUser("Coloca el mismo dedo en el sensor de nuevo...", user_id)
 
         while True:
@@ -356,9 +367,13 @@ def enroll_fingerprint_with_telegram_feedback(username:str, user_id:str):
             return False
 
         if fingerimg == 1:
+            lcd_string("Quita el dedo", LCD_LINE_1)
+            lcd_string("del sensor", LCD_LINE_2)
             sendMesagetoUser("Retira el dedo del sensor", user_id)
             time.sleep(1)
             while i != adafruit_fingerprint.NOFINGER:
+                lcd_string("Coloca el dedo", LCD_LINE_1)
+                lcd_string("en el sensor", LCD_LINE_2)
                 sendMesagetoUser("Vuelve a colocar el dedo en el sensor", user_id)
                 i = Fingerprint_sensor.finger.get_image()
 
@@ -388,7 +403,7 @@ def enroll_fingerprint_with_telegram_feedback(username:str, user_id:str):
             print("Other error")
         return False
 
-    Fingerprint_sensor.auth_fingerprints.append({"location": location, "user": username})
+    Fingerprint_sensor.auth_fingerprints.append({"location": location, "user_name": username, "user_id": user_id})
 
     with open('auth_fingerprints.json', 'w') as file:
             json.dump(Fingerprint_sensor.auth_fingerprints, file)

@@ -6,6 +6,7 @@ from utils.notion import add_log_entry_to_notion
 from datetime import datetime
 from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
 from hardware.selenoid import unlockSelenoid
+import time
 
 RFID_sensor = RFID()
 Fingerprint_sensor = Fingerprint()
@@ -24,11 +25,11 @@ def unlockSafe(user_name, unlock_type):
     """
     global alarmON
 
+    lcd_string("Caja Abierta",LCD_LINE_1)
+    lcd_string(f"Hola {user_name}",LCD_LINE_2)
     unlockSelenoid()
     pauseAlarm()
     alarmON = False
-    lcd_string("Caja Abierta",LCD_LINE_1)
-    lcd_string(f"Bienvenido {user_name}",LCD_LINE_2)
     add_log_entry_to_notion(user_name, "Apertura", datetime.now(), unlock_type)
 
     return False
@@ -51,6 +52,7 @@ def playAlarm(unlock_type):
         mixer.music.play(-1,0)
 
     add_log_entry_to_notion("Intruso", "Intento apertura", datetime.now(), unlock_type)
+    time.sleep(2.5)
 
 def pauseAlarm():
     mixer.music.pause()

@@ -18,5 +18,4 @@ def unlockSelenoid():
         GPIO.output( PIN_SELENOID , GPIO.HIGH )
     except:
         print("Error al activar selenoide")
-    finally:
-        GPIO.cleanup()
+        time.sleep(2.5)
