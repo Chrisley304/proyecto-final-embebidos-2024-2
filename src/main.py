@@ -26,7 +26,7 @@ def hardware_unlock_init(lock: threading.Lock):
                         user_name = Fingerprint_sensor.get_fingerprint_user_name(detected_id)
                         print(f"Detected #{Fingerprint_sensor.finger.finger_id} with {Fingerprint_sensor.finger.confidence} confidence. Username: {user_name}")
                         unlockSafe(user_name, "Huella dactilar")
-                        time.sleep(1.5)
+                        time.sleep(2.5)
                     else:
                         print("Fingerprint not authorized")
                         playAlarm("Huella dactilar")

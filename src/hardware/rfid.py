@@ -3,6 +3,7 @@ from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 import json
 from hardware import security_box_controller
+import time
 
 class RFID:
 
@@ -79,10 +80,12 @@ class RFID:
                 print("CAJA DESBLOQUEADA")
                 user_name = self.get_rfid_user_name(id)
                 security_box_controller.unlockSafe(user_name, "RFID")
+                time.sleep(2.5)
                 return True
             else:
                 print("ACCESO DENEGADO")
                 security_box_controller.playAlarm("RFID")
+                time.sleep(1.5)
                 return False
     
     def get_rfid_user_name(self, rfid_id):

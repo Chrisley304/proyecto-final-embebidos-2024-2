@@ -5,6 +5,7 @@ from pygame import mixer
 from utils.notion import add_log_entry_to_notion
 from datetime import datetime
 from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
+from hardware.selenoid import unlockSelenoid
 
 RFID_sensor = RFID()
 Fingerprint_sensor = Fingerprint()
@@ -22,7 +23,8 @@ def unlockSafe(user_name, unlock_type):
             unlock_type: Medio por el cual se desbloqueo la caja fuerte.
     """
     global alarmON
-    print("MOCK: Unlocking safe")
+
+    unlockSelenoid()
     pauseAlarm()
     alarmON = False
     lcd_string("Caja Abierta",LCD_LINE_1)
