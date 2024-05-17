@@ -30,7 +30,7 @@ def unlockSafe(user_name, unlock_type):
     unlockSelenoid()
     pauseAlarm()
     alarmON = False
-    add_log_entry_to_notion(user_name, "Apertura", datetime.now(), unlock_type)
+    add_log_entry_to_notion(user_name, "Apertura ✅", datetime.now(), unlock_type)
 
     return False
 
@@ -51,7 +51,7 @@ def playAlarm(unlock_type):
         alarmON = True
         mixer.music.play(-1,0)
 
-    add_log_entry_to_notion("Intruso", "Intento apertura", datetime.now(), unlock_type)
+    add_log_entry_to_notion("Intruso", "Intento apertura 🚨", datetime.now(), unlock_type)
     time.sleep(2.5)
 
 def pauseAlarm():

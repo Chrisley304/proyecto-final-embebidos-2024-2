@@ -8,6 +8,7 @@ import threading
 import adafruit_fingerprint
 import time
 from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
+from utils.notion import get_last_n_events
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -247,6 +248,21 @@ def record_fingerprint(message:types.Message):
 
     istelegramRecordingInput = False
 
+def view_last_safe_box_activity(message: types.Message):
+    """
+        Función para obtener los ultimos 3 eventos registrados en la caja de seguridad.
+
+        Params:
+            message: Objeto de mensaje de Telegram.
+    """
+    user_id = str(message.from_user.id)
+
+    if isUserAutorized(user_id):
+        events_messages = get_last_n_events(3)
+
+        for event in events_messages:
+            sendMesagetoUser(event, user_id)
+
 def sendMesagetoUser(message:str, user_id:str):
     """
     Función para enviar un mensaje a un usuario en especifico.
@@ -255,7 +271,7 @@ def sendMesagetoUser(message:str, user_id:str):
         message: Cadena de texto a enviar.
         user_id: ID del usuario al que se va a enviar el mensaje.
     """
-    telegram_bot.send_message(user_id, message)
+    telegram_bot.send_message(user_id, message, parse_mode="Markdown")
 
 def init(lock: threading.Lock):
     """
@@ -292,6 +308,10 @@ def init(lock: threading.Lock):
     def handle_new_fingerprint(message):
         with lock:
             record_fingerprint(message)
+
+    @telegram_bot.message_handler(commands=['veractividad'])
+    def handle_view_last_activity(message):
+        view_last_safe_box_activity(message)
 
     while True:
         telegram_bot.polling()
