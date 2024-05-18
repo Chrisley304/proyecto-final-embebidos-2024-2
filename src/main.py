@@ -6,7 +6,7 @@ from hardware.security_box_controller import RFID_sensor, Fingerprint_sensor, un
 import RPi.GPIO as GPIO
 
 def isSystemActive():
-    return telegram.usersExists() and not telegram.isRecordingInput
+    return telegram.users_exists() and not telegram.isRecordingInput
 
 isTakingInput = False
 hardware_lock = threading.Lock()

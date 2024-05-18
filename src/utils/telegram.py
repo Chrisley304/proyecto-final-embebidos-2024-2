@@ -32,7 +32,7 @@ def start(message):
     Params:
         message: Objeto de mensaje de Telegram.
     """
-    if not usersExists():
+    if not users_exists():
         telegram_bot.reply_to(
             message, "¡Hola! Soy securitybot, yo te ayudare con la seguridad de tu caja fuerte.\nUsa /registro para registrarte como usuario autorizado y tener acceso a los controles de la caja fuerte.")
     else:
@@ -49,7 +49,7 @@ def register_user(message:types.Message):
     """
     user_id = str(message.from_user.id)
     chat_id = message.chat.id
-    if not usersExists() or (user_id in safe_users and safe_users[user_id]['state'] == "awaiting_register"):
+    if not users_exists() or (user_id in safe_users and safe_users[user_id]['state'] == "awaiting_register"):
         sent_msg = telegram_bot.send_message(chat_id, "¡Bienvenido! Por favor envía tu nombre para completar el registro.", parse_mode="Markdown")
         # Cambiar el estado del usuario a 'awaiting_name'
         safe_users[user_id] = {'state': 'awaiting_name', 'chat_id': chat_id}
@@ -211,7 +211,7 @@ def record_rfid_card(message:types.Message):
     """
     user_id = str(message.from_user.id)
 
-    if isUserAutorized(user_id):
+    if is_user_autorized(user_id):
         isRecordingInput = True
         telegram_bot.reply_to(message, "Acerca el tag RFID al sensor")
         lcd_string("Acerca el tag", LCD_LINE_1)
@@ -233,7 +233,7 @@ def record_fingerprint(message:types.Message):
     """
     user_id = str(message.from_user.id)
 
-    if isUserAutorized(user_id):
+    if is_user_autorized(user_id):
         istelegramRecordingInput = True
         while isTakingInput:
             pass
@@ -257,7 +257,7 @@ def view_last_safe_box_activity(message: types.Message):
     """
     user_id = str(message.from_user.id)
 
-    if isUserAutorized(user_id):
+    if is_user_autorized(user_id):
         events_messages = get_last_n_events(3)
 
         for event in events_messages:
@@ -300,6 +300,114 @@ Aquí tienes una lista de los comandos disponibles y sus descripciones:
 
     telegram_bot.send_message(user_id, help_text, parse_mode="Markdown")
 
+def send_request_to_admins(message):
+    """
+        Función para enviar solicitud de permisos a los administradores.
+
+        Params:
+            message: Objeto de mensaje de Telegram.
+    """
+    user_id = str(message.from_user.id)
+    pending_users = get_pending_users()
+
+    if user_id not in safe_users:
+        filtered_pending = [pending for pending in pending_users if pending["user_id"] == user_id]
+
+        if len(filtered_pending) == 0:
+            sent_msg = telegram_bot.send_message(user_id, "Por favor envía tu nombre para enviar la solicitud", parse_mode="Markdown")
+            telegram_bot.register_next_step_handler(sent_msg, handle_request_input)
+        else:
+            telegram_bot.reply_to(
+            message, "Ya enviaste una solicitud.")
+    else:
+        telegram_bot.reply_to(
+            message, "Ya estas registrado.")
+
+def handle_request_input(message:types.Message):
+    """
+    Función para recibir el nombre del usuario que desea enviar una solicitud a los administradores.
+
+    Params:
+        message: Objeto message de telegram.
+    """
+    user_id = str(message.from_user.id)
+
+    name_input = message.text
+
+    if name_input.strip() != "":
+        pending_users = get_pending_users()
+
+        pending_users.append({"user_id": user_id,"user_name": name_input})
+
+        # Escribir en el archivo JSON
+        with open('pending_users.json', 'w') as file:
+            json.dump(pending_users, file)
+
+        telegram_bot.send_message(user_id, "Tu solicitud fue enviada con éxito.")
+    else:
+        telegram_bot.send_message(user_id, "El nombre no puede estar vacio.")
+
+def review_requests(message):
+    """
+    Función para revisar las solicitudes de nuevos usuarios para tener permisos de utilizar la caja fuerte.
+
+    Params:
+        message: Objeto message de telegram.
+    """
+    user_id = str(message.from_user.id)
+
+    if is_user_autorized(user_id):
+        requests = get_pending_users()
+
+        if len(requests) > 0:
+
+            for idx, req in enumerate(requests):
+                telegram_bot.send_message(user_id, f"**{idx+1}**: {requests['user_name']}", parse_mode="Markdown")
+
+            sent_msg = telegram_bot.send_message(user_id, "Envia el numero del usuario que desees aprobar.")
+            telegram_bot.register_next_step_handler(sent_msg, handle_review_request_input)
+
+        else:
+            telegram_bot.send_message(user_id, "No hay solicitudes.")
+
+    else:
+        telegram_bot.send_message(user_id, "No tienes permiso para hacer eso.")
+
+def handle_review_request_input(message:types.Message):
+    """
+    Función para recibir el numero del usuario que se desea aprobar el acceso.
+
+    Params:
+        message: Objeto message de telegram.
+    """
+    user_id = str(message.from_user.id)
+
+    try:
+        number_input = int(message.text) - 1
+    except:
+        telegram_bot.send_message(user_id, "Debes enviar solo un numero.")
+        return
+
+    pending_users = get_pending_users()
+
+    if number_input < len(pending_users) and number_input >= 0:
+        
+        approved_user_id = pending_users[number_input]["user_id"]
+
+        new_pending_users = [pending for pending in pending_users if pending["user_id"] != approved_user_id]
+
+        safe_users[approved_user_id] = {'state': "awaiting_register"}
+
+        # Escribir en los archivos JSON
+        with open('pending_users.json', 'w') as file:
+            json.dump(new_pending_users, file)
+        
+        with open('safe_users.json', 'w') as file:
+            json.dump(safe_users, file)
+
+        telegram_bot.send_message(user_id, "El usuario fue aprovado con éxito.")
+    else:
+        telegram_bot.send_message(user_id, "El numero de usuario que ingresaste es invalido.")
 
 def init(lock: threading.Lock):
     """
@@ -348,10 +456,18 @@ def init(lock: threading.Lock):
     def handle_help(message):
         send_help(message)
 
+    @telegram_bot.message_handler(commands=['solicitud'])
+    def handle_new_request(message):
+        send_request_to_admins(message)
+
+    @telegram_bot.message_handler(commands=['revisarsolicitudes'])
+    def handle_review_requests(message):
+        review_requests(message)
+
     while True:
         telegram_bot.polling()
 
-def usersExists():
+def users_exists():
     """
     Función para saber si existen usuarios registrados en el bot.
 
@@ -359,7 +475,20 @@ def usersExists():
     """
     return len(safe_users.keys()) > 0
 
-def isUserAutorized(user_id):
+def get_pending_users() -> list:
+    """
+        Funcion para obtener los usuarios que solicitaron aprobación.
+
+        Returns: Lista de usuarios pendientes
+    """
+
+    try:
+        with open('pending_users.json', 'r') as file:
+            pending_users = json.load(file)
+    except FileNotFoundError:
+        return []
+
+def is_user_autorized(user_id):
     """
     Función para saber si el usuario esta registrado correctamente.
 

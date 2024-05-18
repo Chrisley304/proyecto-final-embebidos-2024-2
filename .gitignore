@@ -2,6 +2,7 @@
 safe_users.json
 authorized_rfid.json
 auth_fingerprints.json
+pending_users.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
