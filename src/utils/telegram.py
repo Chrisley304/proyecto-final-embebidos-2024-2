@@ -273,9 +273,40 @@ def sendMesagetoUser(message:str, user_id:str):
     """
     telegram_bot.send_message(user_id, message, parse_mode="Markdown")
 
+def send_help(message):
+    """
+        Función para enviar los comandos disponibles al usuario.
+
+        Params:
+            message: Objeto de mensaje de Telegram.    
+    """
+    user_id = str(message.from_user.id)
+
+    help_text = """
+Aquí tienes una lista de los comandos disponibles y sus descripciones:
+/start: Inicia el bot y recibe un mensaje de bienvenida.
+/veractividad: Revisa la última actividad de la caja fuerte, incluyendo accesos y eventos recientes.
+/reconocimientofacial: Desbloquea la caja fuerte enviando una foto de tu cara para el reconocimiento facial.
+/desbloqueomaestro: Si tienes problemas con los sensores de la caja fuerte, utiliza tu contraseña maestra para abrirla.
+/nuevorfid: Una vez registrado, añade un nuevo tag RFID para acceder a la caja fuerte.
+/nuevahuella: Una vez registrado, añade una nueva huella digital a la caja fuerte.
+/nuevoreconocimientofacial: Una vez registrado, envía una foto para añadirla al sistema de reconocimiento facial de la caja fuerte.
+/registro: Si eres un usuario autorizado o el primer usuario, regístrate en el bot enviando tu nombre.
+/solicitud: Envía una solicitud a los "super usuarios" para obtener permisos de interacción con la caja fuerte.
+/revisarsolicitudes: Los super usuarios pueden revisar las solicitudes de personas que desean ser autorizadas.
+/borrarperfil: Elimina tu perfil del bot y revoca tus permisos.
+/ayuda: Muestra este mensaje de ayuda con la lista de comandos y sus descripciones.
+    """
+
+    telegram_bot.send_message(user_id, help_text, parse_mode="Markdown")
+
+
 def init(lock: threading.Lock):
     """
-    Función para iniciar el bot de Telegram.
+        Función para iniciar el bot de Telegram.
+
+        Params:
+            lock: Objeto Lock de threading para evitar choques con variables concurrentes.
     """
 
     # Comandos del bot
@@ -312,6 +343,10 @@ def init(lock: threading.Lock):
     @telegram_bot.message_handler(commands=['veractividad'])
     def handle_view_last_activity(message):
         view_last_safe_box_activity(message)
+    
+    @telegram_bot.message_handler(commands=['ayuda'])
+    def handle_help(message):
+        send_help(message)
 
     while True:
         telegram_bot.polling()
