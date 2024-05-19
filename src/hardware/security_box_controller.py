@@ -1,19 +1,20 @@
 from hardware.rfid import RFID
 from hardware.fingerprint import Fingerprint
-import vlc
 from pygame import mixer
 from utils.notion import add_log_entry_to_notion
 from datetime import datetime
 from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
 from hardware.selenoid import unlockSelenoid
+from hardware.camera import Camera
 import time
 
 RFID_sensor = RFID()
 Fingerprint_sensor = Fingerprint()
+Camera_sensor = Camera()
 alarmON = False
 
 mixer.init()
-mixer.music.load("src/assets/alarm.mp3")
+mixer.music.load("src/assets/alarm_right_channel.mp3")
 
 def unlockSafe(user_name, unlock_type):
     """
@@ -50,6 +51,9 @@ def playAlarm(unlock_type):
     if not alarmON:
         alarmON = True
         mixer.music.play(-1,0)
+
+    # TODO: send photo to telegram admins
+    impostor_photo = Camera_sensor.take_photo()
 
     add_log_entry_to_notion("Intruso", "Intento apertura 🚨", datetime.now(), unlock_type)
     time.sleep(2.5)

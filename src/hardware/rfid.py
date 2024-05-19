@@ -1,6 +1,5 @@
 # import time
 from mfrc522 import SimpleMFRC522
-import RPi.GPIO as GPIO
 import json
 from hardware import security_box_controller
 
@@ -12,7 +11,7 @@ class RFID:
 
     def _init_authorized_rfid_from_json(self):
         """
-            Carga de usuarios suscritos desde archivo JSON
+            Carga de tags RFID autorizados desde archivo JSON
         """
         try:
             with open('authorized_rfid.json', 'r') as file:
@@ -53,7 +52,7 @@ class RFID:
             id, text = self.reader.read()
             return str(id)
         except:
-            GPIO.cleanup()
+            print("Error al intentar leer del sensor RFID")
 
     def get_rfid_entry(self):
         """
@@ -65,7 +64,7 @@ class RFID:
             id, text = self.reader.read_no_block()
             return str(id) if id else None
         except:
-            GPIO.cleanup()
+            print("Error al intentar leer del lector RFID")
 
     def unlock_rfid(self):
         """

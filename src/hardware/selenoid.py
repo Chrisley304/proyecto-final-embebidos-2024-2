@@ -1,7 +1,7 @@
 import time
 import RPi.GPIO as GPIO
 
-PIN_SELENOID = 18  #Variable al cual conectamos la señal del Solenoide
+PIN_SELENOID = 12 #Variable al cual conectamos la señal del Solenoide
 
 GPIO.setmode(GPIO.BCM)   #Establecemos el modo según el cual nos refiriremos a los GPIO de nuestra RPi            
 GPIO.setup(PIN_SELENOID, GPIO.OUT) #Configuramos el GPIO18 como salida
@@ -19,3 +19,10 @@ def unlockSelenoid():
     except:
         print("Error al activar selenoide")
         time.sleep(2.5)
+
+if __name__ == '__main__':
+    try:
+        print("Testing selenoid")
+        unlockSelenoid()
+    finally:
+        GPIO.cleanup()
