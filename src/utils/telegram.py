@@ -251,6 +251,7 @@ def facial_recognition_request(message):
 
             photo_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
             photo_to_recognize = Camera_sensor.take_photo(photo_date, "RECONOCIMIENTO")
+            telegram_bot.send_message(user_id, "Foto tomada correctamente.")
 
             if recognize_face_from_photos(user_photo_path, photo_to_recognize):
                 user_name = safe_users[user_id]["name"]
