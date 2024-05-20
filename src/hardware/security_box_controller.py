@@ -17,7 +17,7 @@ alarmON = False
 mixer.init()
 mixer.music.load("src/assets/alarm_right_channel.mp3")
 
-def unlockSafe(user_name, unlock_type):
+def unlockSafe(user_name:str, unlock_type:str):
     """
         Funcion para abrir la caja fuerte una vez que se autentifico al usuario.
 
@@ -36,8 +36,6 @@ def unlockSafe(user_name, unlock_type):
 
     telegram.send_message_to_safe_users(f"✅ Caja abierta por {user_name}. Fecha y hora: {open_date}\n Ve mas detalles enviando /veractividad o en Notion.")
     add_log_entry_to_notion(user_name, "Apertura ✅", datetime.now(), unlock_type)
-
-    return False
 
 def playAlarm(unlock_type):
     """
@@ -58,7 +56,7 @@ def playAlarm(unlock_type):
 
     # TODO: send photo to telegram admins
     photo_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-    impostor_photo = Camera_sensor.take_photo(photo_date)
+    impostor_photo = Camera_sensor.take_photo(photo_date, "ALERTA")
 
     telegram.send_impostor_photo_to_safe_users(impostor_photo, photo_date)
     add_log_entry_to_notion("Intruso", "Intento apertura 🚨", datetime.now(), unlock_type)

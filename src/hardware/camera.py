@@ -9,14 +9,21 @@ class Camera():
         self.picam.configure(self.camera_config)
         self.picam.start()
 
-    def take_photo(self, date):
+    def take_photo(self, date, type=""):
         """
             Función para tomar una foto con la camara y devolver el path a la misma.
 
             Params:
                 date: Fecha de captura de la foto
+                type: Tipo de foto que se puede capturar -> "ALERTA" | "RECONOCIMIENTO"
         """
-        directory = "./alert_photos/"
+        directory = "./other_photos/"
+
+        if type == "ALERTA":
+            directory = "./alert_photos/"
+        elif type == "RECONOCIMIENTO":
+            directory = "./photos_to_recog/"
+
         photo_path = os.path.join(directory, f"{date}.jpg")
         
         # Asegurar que el directorio exista

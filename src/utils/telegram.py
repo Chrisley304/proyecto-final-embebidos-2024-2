@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from telebot import telebot, types
 import json
-from hardware.security_box_controller import RFID_sensor, unlockSafe, Fingerprint_sensor
+from hardware.security_box_controller import RFID_sensor, unlockSafe, Fingerprint_sensor, playAlarm, Camera_sensor
 from main import isTakingInput
 import threading
 import adafruit_fingerprint
@@ -10,6 +10,7 @@ import time
 from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
 from utils.notion import get_last_n_events
 from datetime import datetime
+from utils.photo_face_recognition import recognize_face_from_photos
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -214,7 +215,6 @@ def send_impostor_photo_to_safe_users(photo_path:str, alert_date:str):
     else:
         print("Error sending photo to users, photo_path is empty")
 
-
 def save_facial_recog_photo(message):
     """
     Función para registrar una foto de reconocimiento facial del usuario.
@@ -229,6 +229,39 @@ def save_facial_recog_photo(message):
         
         telegram_bot.register_next_step_handler(sent_msg, handle_new_facial_recog_photo)
 
+    else:
+        telegram_bot.reply_to(
+                message, "No estas autorizado para hacer eso.")
+
+def facial_recognition_request(message):
+    """
+    Función intentar abrir la caja fuerte mediante reconocimiento facial, utilizando la foto antes guardada del usuario y la foto tomada mediante la camara de la Raspberry Pi.
+
+    Params:
+        message: Objeto de mensaje de Telegram.
+    """
+    user_id = str(message.from_user.id)
+
+    if is_user_autorized(user_id):
+        if user_photo_exists(user_id):
+            user_photo_path = get_user_photo_path(user_id)
+            telegram_bot.reply_to(
+                message, "Acercate a la camara de la caja fuerte y mira a la camara. Se tomara una foto en 5 segundos...")
+            time.sleep(5)
+
+            photo_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+            photo_to_recognize = Camera_sensor.take_photo(photo_date, "RECONOCIMIENTO")
+
+            if recognize_face_from_photos(user_photo_path, photo_to_recognize):
+                user_name = safe_users[user_id]["name"]
+                telegram_bot.send_message(user_id, "Cara reconocida correctamente :)")
+                unlockSafe(user_name, "Reconocimiento Facial")
+            else:
+                telegram_bot.send_message(user_id, "Cara no reconocida. Iniciando alarma...")
+                playAlarm("Reconocimiento Facial")
+        else:
+            telegram_bot.reply_to(
+                message, "No haz registrado una foto con tu cara para el reconocimiento facial")
     else:
         telegram_bot.reply_to(
                 message, "No estas autorizado para hacer eso.")
@@ -257,8 +290,7 @@ def handle_new_facial_recog_photo(message):
         if not os.path.exists(user_directory):
             os.makedirs(user_directory)
 
-        photo_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-        file_path = os.path.join(user_directory, f'{photo_date}.jpg')
+        file_path = os.path.join(user_directory, 'face.jpg')
         
         # Save the file
         with open(file_path, 'wb') as new_file:
@@ -530,6 +562,10 @@ def init(lock: threading.Lock):
     def handle_review_requests(message):
         review_requests(message)
 
+    @telegram_bot.message_handler(commands=['reconocimientofacial'])
+    def handle_facial_recog(message):
+        facial_recognition_request(message)
+
     while True:
         telegram_bot.polling()
 
@@ -659,3 +695,30 @@ def enroll_fingerprint_with_telegram_feedback(username:str, user_id:str):
             json.dump(Fingerprint_sensor.auth_fingerprints, file)
 
     return True
+
+def user_photo_exists(user_id):
+    """
+        Función que devuelve si el usuario tiene una foto registrada para el reconocimiento facial o no.
+
+        Params:
+            user_id: ID del usuario.
+    """
+    if is_user_autorized(user_id):
+        user_photo_path = get_user_photo_path(user_id)
+
+        return os.path.isfile(user_photo_path) if user_photo_path != "" else False
+    else:
+        return False
+
+def get_user_photo_path(user_id):
+    """
+        Función que devuelve la ruta a la foto del usuario.
+        
+        Params:
+            user_id: ID del usuario.
+    """
+    if is_user_autorized(user_id):
+        user_name = safe_users[user_id]["name"]
+        return f"facial_recognition_photos/{user_name}_{user_id}/face.jpg"
+    else:
+        return ""

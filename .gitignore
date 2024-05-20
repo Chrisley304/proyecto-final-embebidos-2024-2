@@ -5,6 +5,8 @@ auth_fingerprints.json
 pending_users.json
 alert_photos
 facial_recognition_photos
+photos_to_recog
+other_photos
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
