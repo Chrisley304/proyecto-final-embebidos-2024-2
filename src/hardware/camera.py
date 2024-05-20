@@ -1,5 +1,6 @@
 from picamera2 import Picamera2
 import os
+from PIL import Image 
 
 class Camera():
 
@@ -31,5 +32,10 @@ class Camera():
             os.makedirs(directory)
 
         self.picam.capture_file(photo_path)
+
+        # Se rota 180° la imagen debido a la posición de la camara
+        img = Image.open(photo_path) 
+        rotate_img= img.rotate(180)
+        rotate_img.save(photo_path)
 
         return photo_path
