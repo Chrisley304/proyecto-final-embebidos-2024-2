@@ -7,6 +7,7 @@ from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
 from hardware.selenoid import unlockSelenoid
 from hardware.camera import Camera
 import time
+from utils import telegram 
 
 RFID_sensor = RFID()
 Fingerprint_sensor = Fingerprint()
@@ -31,6 +32,9 @@ def unlockSafe(user_name, unlock_type):
     unlockSelenoid()
     pauseAlarm()
     alarmON = False
+    open_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+
+    telegram.send_message_to_safe_users(f"✅ Caja abierta por {user_name}. Fecha y hora: {open_date}\n Ve mas detalles enviando /veractividad o en Notion.")
     add_log_entry_to_notion(user_name, "Apertura ✅", datetime.now(), unlock_type)
 
     return False
@@ -53,8 +57,10 @@ def playAlarm(unlock_type):
         mixer.music.play(-1,0)
 
     # TODO: send photo to telegram admins
-    impostor_photo = Camera_sensor.take_photo()
+    photo_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+    impostor_photo = Camera_sensor.take_photo(photo_date)
 
+    telegram.send_impostor_photo_to_safe_users(impostor_photo, photo_date)
     add_log_entry_to_notion("Intruso", "Intento apertura 🚨", datetime.now(), unlock_type)
     time.sleep(2.5)
 

@@ -1,4 +1,5 @@
 from picamera2 import Picamera2
+import os
 
 class Camera():
 
@@ -15,7 +16,12 @@ class Camera():
             Params:
                 date: Fecha de captura de la foto
         """
-        photo_path = f"./alert_photos/{date}.jpg"
+        directory = "./alert_photos/"
+        photo_path = os.path.join(directory, f"{date}.jpg")
+        
+        # Asegurar que el directorio exista
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
         self.picam.capture_file(photo_path)
 

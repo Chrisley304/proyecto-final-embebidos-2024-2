@@ -9,6 +9,7 @@ import adafruit_fingerprint
 import time
 from hardware.lcd import lcd_string, LCD_LINE_1, LCD_LINE_2
 from utils.notion import get_last_n_events
+from datetime import datetime
 
 # Carga de token de Telegram desde archivo .env
 load_dotenv()
@@ -192,6 +193,28 @@ def send_message_to_safe_users(message_text):
     for user_id in safe_users.keys():
         telegram_bot.send_message(safe_users[user_id]["chat_id"], message_text)
 
+def send_impostor_photo_to_safe_users(photo_path:str, alert_date:str):
+    """
+    Función para enviar la foto del intruso a todos los usuarios suscritos.
+
+    Params:
+        photo_path: Path dentro del directorio a la foto a enviar.
+        alert_date: Fecha de detección de impostor
+    """
+
+    if photo_path.strip() != "":
+        for user_id in safe_users.keys():
+            try:
+                with open(photo_path, 'rb') as photo:
+                    telegram_bot.send_message(user_id, f"🚨 ¡Intruso Detectado el {alert_date}!\n Ve mas detalles enviando /veractividad o en Notion.")
+                    telegram_bot.send_photo(user_id, photo)
+                print(f"Impostor photo sent to user {user_id}")
+            except Exception as e:
+                print(f"Error sending photo to user {user_id}: {e}")
+    else:
+        print("Error sending photo to users, photo_path is empty")
+
+
 def save_facial_recog_photo(message):
     """
     Función para registrar una foto de reconocimiento facial del usuario.
@@ -199,8 +222,51 @@ def save_facial_recog_photo(message):
     Params:
         message: Objeto de mensaje de Telegram.
     """
-    telegram_bot.reply_to(
-            message, "Proximamente!")
+    user_id = str(message.from_user.id)
+
+    if is_user_autorized(user_id):
+        sent_msg = telegram_bot.send_message(user_id, "Envia una foto de tu cara, para registrarla como reconocimiento facial.", parse_mode="Markdown")
+        
+        telegram_bot.register_next_step_handler(sent_msg, handle_new_facial_recog_photo)
+
+    else:
+        telegram_bot.reply_to(
+                message, "No estas autorizado para hacer eso.")
+
+def handle_new_facial_recog_photo(message):
+    """
+        Función para registrar una photo para reconocimiento facial.
+
+        Params:
+            message: Objeto de mensaje de Telegram.
+    """
+    user_id = str(message.from_user.id)
+    if message.content_type == 'photo':
+        photo = message.photo[-1]
+
+        photo_file_info = telegram_bot.get_file(photo.file_id)
+        downloaded_file = telegram_bot.download_file(photo_file_info.file_path)
+        
+        # Define the path to save the photo
+        base_directory = 'facial_recognition_photos'
+        if not os.path.exists(base_directory):
+            os.makedirs(base_directory)
+
+        user_directory = os.path.join(base_directory, f"{safe_users[user_id]['name']}_{user_id}")
+
+        if not os.path.exists(user_directory):
+            os.makedirs(user_directory)
+
+        photo_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+        file_path = os.path.join(user_directory, f'{photo_date}.jpg')
+        
+        # Save the file
+        with open(file_path, 'wb') as new_file:
+            new_file.write(downloaded_file)
+        
+        telegram_bot.reply_to(message, "Foto recibida y guardada correctamente.")
+    else:
+        telegram_bot.reply_to(message, "Por favor, envía una foto.")
 
 def record_rfid_card(message:types.Message):
     """
