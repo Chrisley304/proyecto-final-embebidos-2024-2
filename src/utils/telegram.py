@@ -467,7 +467,7 @@ def review_requests(message):
         if len(requests) > 0:
 
             for idx, req in enumerate(requests):
-                telegram_bot.send_message(user_id, f"**{idx+1}**: {requests['user_name']}", parse_mode="Markdown")
+                telegram_bot.send_message(user_id, f"**{idx+1}**: {req['user_name']}", parse_mode="Markdown")
 
             sent_msg = telegram_bot.send_message(user_id, "Envia el numero del usuario que desees aprobar.")
             telegram_bot.register_next_step_handler(sent_msg, handle_review_request_input)
@@ -594,6 +594,7 @@ def get_pending_users() -> list:
     try:
         with open('pending_users.json', 'r') as file:
             pending_users = json.load(file)
+            return pending_users
     except FileNotFoundError:
         return []
 
