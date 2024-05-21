@@ -243,15 +243,20 @@ def facial_recognition_request(message):
     user_id = str(message.from_user.id)
 
     if is_user_autorized(user_id):
+        isRecordingInput = True
         if user_photo_exists(user_id):
             user_photo_path = get_user_photo_path(user_id)
             telegram_bot.reply_to(
                 message, "Acercate a la camara de la caja fuerte y mira a la camara. Se tomara una foto en 5 segundos...")
+            lcd_string("Tomando foto", LCD_LINE_1)
+            lcd_string("acercate...", LCD_LINE_2)
             time.sleep(5)
 
             photo_date = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
             photo_to_recognize = Camera_sensor.take_photo(photo_date, "RECONOCIMIENTO")
             telegram_bot.send_message(user_id, "Foto tomada correctamente.")
+            lcd_string("Foto capturada", LCD_LINE_1)
+            lcd_string("correctamente", LCD_LINE_2)
 
             if recognize_face_from_photos(user_photo_path, photo_to_recognize):
                 user_name = safe_users[user_id]["name"]
@@ -263,6 +268,7 @@ def facial_recognition_request(message):
         else:
             telegram_bot.reply_to(
                 message, "No haz registrado una foto con tu cara para el reconocimiento facial")
+        isRecordingInput = False
     else:
         telegram_bot.reply_to(
                 message, "No estas autorizado para hacer eso.")
